@@ -1,0 +1,457 @@
+import json
+import sqlite3
+import yt_dlp
+import re
+import traceback
+import typing
+import urllib.request
+from urllib.error import HTTPError, URLError
+from datetime import datetime
+from config import METADATA_DIR, VIDEOS_DIR
+from services.db.db_manager import DatabaseManager
+from yt_dlp.utils import DownloadError
+
+
+def sanitize_filename(name):
+    """Replaces characters that are invalid in Windows/Linux file paths."""
+    return re.sub(r'[\\/*?:"<>|]', '_', name)
+
+
+class AddChannelService:
+    def __init__(self, ytdlp=None, settings=None):
+        self.ytdlp = ytdlp
+        self.settings = settings
+        self.metadata_folder = METADATA_DIR
+        self.videos_folder = VIDEOS_DIR
+
+    @staticmethod
+    def get_connection():
+        conn = DatabaseManager.get_connection()
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    def get_all_groups(self):
+        with self.get_connection() as conn:
+            return [row["name"] for row in conn.execute("SELECT name FROM groups").fetchall()]
+
+    def get_channels_by_group(self, group):
+        with self.get_connection() as conn:
+            return [row["name"] for row in
+                    conn.execute("SELECT name FROM channels WHERE group_name = ?", (group,)).fetchall()]
+
+    def get_channel_details(self, name):
+        with self.get_connection() as conn:
+            row = conn.execute("SELECT * FROM channels WHERE name = ?", (name,)).fetchone()
+            return dict(row) if row else None
+
+    def get_videos_by_channel(self, name):
+        with self.get_connection() as conn:
+            rows = conn.execute("SELECT * FROM videos WHERE channel_name = ?", (name,)).fetchall()
+            return [dict(row) for row in rows]
+
+    def add_channel(self, group_name: str, url: str) -> str:
+        success, message = self.fetch_channel_info(url, group_name)
+        if not success:
+            raise Exception(message)
+        return message.replace("Successfully added ", "")
+
+    def delete_channel(self, channel_name: str):
+        with self.get_connection() as conn:
+            conn.execute("PRAGMA foreign_keys = ON;")
+            conn.execute("DELETE FROM channels WHERE name = ?", (channel_name,))
+            conn.commit()
+
+    def check_videos_online_status(self, videos, progress_callback=None):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            total = len(videos)
+
+            for i, video in enumerate(videos):
+                video_url = video.get("url")
+                video_id = video.get("video_id")
+
+                if not video_url:
+                    if video_id:
+                        video_url = f"https://www.youtube.com/watch?v={video_id}"
+                    else:
+                        continue
+
+                oembed_url = f"https://www.youtube.com/oembed?url={video_url}&format=json"
+                is_lost = 0
+
+                try:
+                    req = urllib.request.Request(oembed_url, headers={'User-Agent': 'Mozilla/5.0'})
+                    urllib.request.urlopen(req)
+                except HTTPError as e:
+                    if e.code in [401, 404]:
+                        is_lost = 1
+                except URLError:  # Fixed broad exception
+                    pass
+
+                cursor.execute("UPDATE videos SET is_lost_media = ? WHERE video_id = ?", (is_lost, video_id))
+
+                if progress_callback:
+                    progress_callback(i + 1, total)
+
+            conn.commit()
+
+    # --- NEW: Channel Update, Description Versioning, and Playlist Archiving ---
+    def update_channel_metadata(self, channel_name: str):
+        old_info = self.get_channel_details(channel_name)
+        if not old_info:
+            return False, "Channel not found in database."
+
+        old_desc = old_info.get("description", "")
+        last_fetch_date = old_info.get("last_fetch_date") or "UnknownDate"
+        channel_url = old_info.get("url")
+
+        if not channel_url:
+            return False, "No URL found for this channel."
+
+        ydl_opts = {
+            'quiet': True,
+            'extract_flat': True,
+            'playlistend': 1,
+            'js_runtimes': {'deno': {'path': None}},
+            'remote_components': ['ejs:github']
+        }
+
+        # 1. Fetch Basic Channel Details
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:  # type: ignore
+                raw_info = ydl.extract_info(channel_url, download=False)
+                # Fixed type hinting warnings by casting to a standard dict
+                new_info: dict = dict(raw_info) if raw_info else {}
+                new_desc = new_info.get("description", "")
+        except DownloadError:
+            with self.get_connection() as conn:
+                conn.execute("UPDATE channels SET is_lost_media = 1 WHERE name = ?", (channel_name,))
+                conn.commit()
+            return False, "Channel is unreachable (Lost Media)."
+
+        cid = old_info.get("channel_id")
+
+        # Determine current handle from yt-dlp to ensure we use the latest one
+        new_handle = new_info.get("uploader_id", old_info.get("handle", ""))
+        safe_handle = new_handle if new_handle.startswith('@') else f"@{new_handle}"
+
+        # Root folder is strictly the immutable Channel ID
+        desc_folder = self.metadata_folder / cid
+
+        # 2. Version the Description if it changed
+        if old_desc and old_desc.strip() != new_desc.strip():
+            desc_folder.mkdir(parents=True, exist_ok=True)
+            safe_date = str(last_fetch_date).replace(":", "-").replace(".", "-")
+
+            # Use the new naming convention!
+            backup_path = desc_folder / f"({safe_handle}) description_{safe_date}.txt"
+            try:
+                with open(backup_path, 'w', encoding='utf-8') as f:
+                    f.write(old_desc)
+            except OSError:
+                pass
+
+        now_str = datetime.now().isoformat()
+
+        # 3. Fetch Playlists
+        playlists_url = channel_url + "/playlists" if not channel_url.endswith("/playlists") else channel_url
+        ydl_opts_pl = {
+            'quiet': True,
+            'extract_flat': True,
+            'js_runtimes': {'deno': {'path': None}},
+            'remote_components': ['ejs:github']
+        }
+
+        extracted_playlists = []
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts_pl) as ydl:  # type: ignore
+                raw_pl = ydl.extract_info(playlists_url, download=False)
+                # Fixed type hinting warnings by casting to a standard dict
+                pl_info: dict = dict(raw_pl) if raw_pl else {}
+                if 'entries' in pl_info:
+                    extracted_playlists = pl_info['entries']
+        except DownloadError:  # Fixed broad exception
+            pass
+
+        # 4. Save to Database
+        with self.get_connection() as conn:
+            conn.execute("""
+                UPDATE channels 
+                SET description = ?, last_fetch_date = ?, handle = ?, is_lost_media = 0
+                WHERE name = ?
+            """, (new_desc, now_str, new_handle, channel_name))
+
+            for pl in extracted_playlists:
+                if not pl: continue
+                pl_id = pl.get('id')
+                pl_title = pl.get('title')
+                pl_url = pl.get('url')
+
+                if not pl_id: continue
+
+                cursor = conn.cursor()
+                cursor.execute("SELECT id FROM playlists WHERE playlist_id = ?", (pl_id,))
+                if cursor.fetchone():
+                    cursor.execute("""
+                        UPDATE playlists SET title = ?, url = ?, last_updated = ? WHERE playlist_id = ?
+                    """, (pl_title, pl_url, now_str, pl_id))
+                else:
+                    cursor.execute("""
+                        INSERT INTO playlists (channel_name, playlist_id, title, url, last_updated)
+                        VALUES (?, ?, ?, ?, ?)
+                    """, (channel_name, pl_id, pl_title, pl_url, now_str))
+
+            conn.commit()
+
+        return True, "Channel metadata and playlists updated successfully."
+
+    def fetch_channel_info(self, url, group, progress_callback=None):
+        url = url.strip()
+
+        if not url.startswith("http"):
+            url = url.lstrip("@")
+            url = f"https://www.youtube.com/@{url}"
+
+        ydl_opts: dict[str, typing.Any] = {
+            'quiet': True,
+            'extract_flat': 'in_playlist',
+            'dump_single_json': True,
+            'js_runtimes': {'deno': {'path': None}},
+            'remote_components': ['ejs:github']
+        }
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:  # type: ignore
+            try:
+                if progress_callback:
+                    progress_callback("Fetching channel metadata via yt-dlp...")
+
+                raw_info = ydl.extract_info(url, download=False)
+                info = dict(raw_info) if raw_info else {}
+
+                channel_name = info.get("uploader") or info.get("channel") or info.get("title") or "Unknown_Channel"
+                channel_id = info.get("channel_id") or "Unknown_ID"
+                handle = info.get("uploader_id") or "Unknown_Handle"
+
+                if handle and handle != "Unknown_Handle":
+                    safe_handle = handle if handle.startswith('@') else f"@{handle}"
+                else:
+                    safe_handle = f"@{channel_id}"
+
+                follower_count = info.get("channel_follower_count") or info.get("subscriber_count") or 0
+                tags_json = json.dumps(info.get("tags", []))
+                chan_thumbnails_json = json.dumps(info.get("thumbnails", []))
+
+                creation_date = info.get("channel_joined", "")
+                country = info.get("channel_country", "Unknown")
+                channel_view_count = info.get("channel_view_count", 0)
+                description = info.get("description", "")
+                links_json = json.dumps(info.get("links", []))
+
+                now_str = datetime.now().isoformat()
+
+                api_key = self.settings.get_youtube_api_key() if self.settings else ""
+                api_data_full = None
+
+                if api_key and channel_id != "Unknown_ID":
+                    if progress_callback: progress_callback("Pinging YouTube API for exact stats...")
+                    api_url = f"https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id={channel_id}&key={api_key}"
+                    try:
+                        req = urllib.request.Request(api_url)
+                        with urllib.request.urlopen(req) as response:
+                            api_data_full = json.loads(response.read().decode())
+
+                            if self.settings:
+                                self.settings.increment_quota_usage()
+
+                            if api_data_full.get("items"):
+                                item = api_data_full["items"][0]
+                                snippet = item.get("snippet", {})
+                                stats = item.get("statistics", {})
+
+                                pub_date = snippet.get("publishedAt", "")
+                                if pub_date:
+                                    creation_date = pub_date[:10].replace("-", "")
+
+                                country = snippet.get("country", country)
+                                channel_view_count = int(stats.get("viewCount", channel_view_count))
+                                description = snippet.get("description", description)
+                    except URLError as e:  # Fixed broad exception
+                        print(f"API Error: {e}")
+
+                info["channel_joined"] = creation_date
+                info["channel_country"] = country
+                info["channel_view_count"] = channel_view_count
+                info["description"] = description
+
+                with self.get_connection() as conn:
+                    cursor = conn.cursor()
+
+                    cursor.execute("SELECT id FROM channels WHERE group_name = ? AND name = ?",
+                                   (group, channel_name))
+                    if cursor.fetchone():
+                        cursor.execute("""
+                            UPDATE channels SET handle=?, channel_id=?, url=?, title=?, follower_count=?, description=?, tags=?, thumbnails=?, creation_date=?, country=?, view_count=?, links=?, last_fetch_date=?
+                            WHERE group_name=? AND name=?
+                        """, (handle, channel_id, info.get("uploader_url") or url, info.get("title"),
+                              follower_count, description, tags_json, chan_thumbnails_json, creation_date, country,
+                              channel_view_count, links_json, now_str, group, channel_name))
+                    else:
+                        cursor.execute("""
+                            INSERT INTO channels (group_name, name, handle, channel_id, url, title, follower_count, description, tags, thumbnails, creation_date, country, view_count, links, is_lost_media, last_fetch_date)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
+                        """, (group, channel_name, handle, channel_id, info.get("uploader_url") or url,
+                              info.get("title"), follower_count, description, tags_json, chan_thumbnails_json,
+                              creation_date, country, channel_view_count, links_json, now_str))
+
+                    def extract_all_videos(data):
+                        videos = []
+                        if not data: return videos
+                        if data.get("id") and data.get("_type") != "playlist" and data.get("url"):
+                            videos.append(data)
+                        if "entries" in data and data["entries"]:
+                            for entry_item in data["entries"]:
+                                videos.extend(extract_all_videos(entry_item))
+                        return videos
+
+                    all_videos = extract_all_videos(info)
+                    total = len(all_videos)
+
+                    # Use strictly channel_id for folder names to prevent breakage on handle changes!
+                    channel_metadata_folder = self.metadata_folder / channel_id
+                    channel_metadata_folder.mkdir(parents=True, exist_ok=True)
+
+                    channel_videos_folder = self.videos_folder / channel_id
+                    channel_videos_folder.mkdir(parents=True, exist_ok=True)
+
+                    for v_type in ["Videos", "Shorts", "Lives"]:
+                        subfolder_name = f"({safe_handle}) {v_type}"
+                        (channel_metadata_folder / subfolder_name).mkdir(parents=True, exist_ok=True)
+                        (channel_videos_folder / subfolder_name).mkdir(parents=True, exist_ok=True)
+
+                    thumbnails = info.get("thumbnails", [])
+                    avatar_url = None
+                    banner_url = None
+
+                    avatars = [t for t in thumbnails if 'avatar' in t.get('id', '').lower()]
+                    banners = [t for t in thumbnails if 'banner' in t.get('id', '').lower()]
+
+                    if avatars:
+                        avatar_url = avatars[-1].get("url")
+                    elif thumbnails:
+                        avatar_url = thumbnails[-1].get("url")
+
+                    if banners: banner_url = banners[-1].get("url")
+
+                    req_headers = {'User-Agent': 'Mozilla/5.0'}
+
+                    # --- NEW FILE NAMING CONVENTION ---
+                    if avatar_url:
+                        try:
+                            req = urllib.request.Request(avatar_url, headers=req_headers)
+                            with urllib.request.urlopen(req) as resp, open(
+                                    channel_metadata_folder / f"({safe_handle}) profile.jpg", 'wb') as f:
+                                f.write(resp.read())
+                        except (URLError, OSError):  # Fixed broad exception
+                            pass
+
+                    if banner_url:
+                        try:
+                            req = urllib.request.Request(banner_url, headers=req_headers)
+                            with urllib.request.urlopen(req) as resp, open(
+                                    channel_metadata_folder / f"({safe_handle}) banner.jpg", 'wb') as f:
+                                f.write(resp.read())
+                        except (URLError, OSError):  # Fixed broad exception
+                            pass
+
+                    for i, video_entry in enumerate(all_videos):
+                        if not video_entry: continue
+
+                        url_chk = video_entry.get("url") or video_entry.get("webpage_url") or ""
+                        video_id = video_entry.get("id") or f"unknown_{i}"
+
+                        if not url_chk and video_id and not video_id.startswith("unknown"):
+                            url_chk = f"https://www.youtube.com/watch?v={video_id}"
+
+                        live_status = video_entry.get("live_status")
+
+                        if live_status in ["is_live", "was_live", "is_upcoming"]:
+                            v_type = "Lives"
+                        elif "/shorts/" in url_chk:
+                            v_type = "Shorts"
+                        else:
+                            v_type = "Videos"
+
+                        title = video_entry.get("title") or "Unknown Title"
+                        view_count = video_entry.get("view_count") or 0
+                        upload_date = video_entry.get("upload_date") or "00000000"
+                        thumbnails_json = json.dumps(video_entry.get("thumbnails", []))
+
+                        subfolder_name = f"({safe_handle}) {v_type}"
+
+                        meta_subfolder = channel_metadata_folder / subfolder_name
+                        video_subfolder = channel_videos_folder / subfolder_name
+
+                        clean_title = sanitize_filename(title)
+                        expected_filename_base = f"{upload_date}_{clean_title}"
+
+                        filepath_base = video_subfolder / expected_filename_base
+
+                        is_downloaded = 0
+                        for ext in ['.mp4', '.mkv', '.webm', '.avi', '.mov']:
+                            if (video_subfolder / f"{expected_filename_base}{ext}").exists():
+                                is_downloaded = 1
+                                break
+
+                        is_metadata_downloaded = 1 if (
+                                meta_subfolder / f"{expected_filename_base}.info.json").exists() else 0
+
+                        cursor.execute("SELECT id FROM videos WHERE video_id = ? AND channel_name = ?",
+                                       (video_id, channel_name))
+                        if cursor.fetchone():
+                            cursor.execute("""
+                                UPDATE videos SET title=?, url=?, view_count=?, video_type=?, upload_date=?, thumbnails=?, filepath=?, is_downloaded=?, is_metadata_downloaded=?
+                                WHERE video_id=? AND channel_name=?
+                            """, (title, url_chk, view_count, v_type, upload_date, thumbnails_json,
+                                  str(filepath_base),
+                                  is_downloaded, is_metadata_downloaded, video_id, channel_name))
+                        else:
+                            cursor.execute("""
+                                INSERT INTO videos (channel_name, video_id, title, url, view_count, is_downloaded, is_metadata_downloaded, video_type, upload_date, thumbnails, filepath)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """, (channel_name, video_id, title, url_chk, view_count, is_downloaded,
+                                  is_metadata_downloaded, v_type, upload_date, thumbnails_json, str(filepath_base)))
+
+                        if progress_callback and i % 10 == 0:
+                            progress_callback(f"Processing video {i}/{total}...")
+
+                    conn.commit()
+
+                # --- NEW FILE NAMING CONVENTION FOR JSON ---
+                base_filename = f"({safe_handle})_{channel_id}"
+
+                ytdlp_save_path = channel_metadata_folder / f"{base_filename}.json"
+                with open(ytdlp_save_path, "w", encoding="utf-8") as f:
+                    json.dump(info, f, indent=4)
+
+                if api_data_full:
+                    api_save_path = channel_metadata_folder / f"{base_filename}_yt_data.json"
+                    with open(api_save_path, "w", encoding="utf-8") as f:
+                        json.dump(api_data_full, f, indent=4)
+
+                return True, f"Successfully added {channel_name}"
+
+            except DownloadError as net_err:
+                print(f"NETWORK/YTDLP ERROR: {net_err}")
+                return False, f"CONNECTION ERROR:\nCould not reach YouTube or find the channel.\n\nDetails: {net_err}"
+
+            except sqlite3.Error as db_err:
+                full_traceback = traceback.format_exc()
+                print(f"DATABASE ERROR: {db_err}\n{full_traceback}")
+                return False, f"DATABASE ERROR:\nFailed to save data to the library.\n\nDetails: {db_err}"
+
+            except Exception as err:
+                # Top level fallback is kept as Exception because we want to catch literally any system failure here
+                full_traceback = traceback.format_exc()
+                error_type = type(err).__name__
+                print(f"UNEXPECTED ERROR [{error_type}]: {err}\n{full_traceback}")
+                return False, f"UNEXPECTED SYSTEM ERROR ({error_type}):\n{full_traceback}"

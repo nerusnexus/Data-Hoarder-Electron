@@ -1,29 +1,36 @@
 import sys
 import json
-import time
-# Later, you will do: from services.services import AppServices
+import traceback
+
+# 1. Import your actual backend logic!
+from services.services import AppServices
 
 def handle_ytdlp_download(url):
-    # Simulate a delay to show the UI waiting for Python
-    time.sleep(2) 
-    
-    # Here is where you will eventually call your existing python logic:
-    # services = AppServices(style=None) 
-    # services.dlp_download_service.download(url)
+    try:
+        # 2. Initialize your services. 
+        # Note: We pass None for 'style' because we no longer use ttkbootstrap!
+        services = AppServices(style=None) 
+        
+        # 3. Call your actual download function
+        # (Assuming your download function takes a URL string)
+        services.dlp_download_service.download(url)
 
-    # Return data to Electron by printing a JSON string
-    result = {
-        "status": "success",
-        "message": f"Python successfully received the URL: {url} and processed it!",
-        "url": url
-    }
+        # 4. If it succeeds, tell Electron
+        result = {
+            "status": "success",
+            "message": f"Successfully triggered download for: {url}",
+        }
+    except Exception as e:
+        # 5. Catch any Python errors and send them cleanly to the UI
+        result = {
+            "status": "error",
+            "message": str(e),
+            "traceback": traceback.format_exc()
+        }
+    
     print(json.dumps(result))
 
 def main():
-    # sys.argv[0] is the script name (bridge.py)
-    # sys.argv[1] is the command name
-    # sys.argv[2] is the payload/url
-    
     if len(sys.argv) < 2:
         print(json.dumps({"status": "error", "message": "No command provided"}))
         sys.exit(1)
