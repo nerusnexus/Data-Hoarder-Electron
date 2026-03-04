@@ -9,7 +9,7 @@ def handle_ytdlp_download(url):
     try:
         # 2. Initialize your services. 
         # Note: We pass None for 'style' because we no longer use ttkbootstrap!
-        services = AppServices(style=None) 
+        services = AppServices()
         
         # 3. Call your actual download function
         # (Assuming your download function takes a URL string)

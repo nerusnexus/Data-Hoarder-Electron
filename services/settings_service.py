@@ -6,20 +6,18 @@ import datetime
 from pathlib import Path
 from config import SETTINGS_PATH, DATA_DIR
 
-
 class SettingsService:
-    def __init__(self, style_instance=None):
+    # Removed style_instance parameter
+    def __init__(self):
         self.settings_path = SETTINGS_PATH
-        self.style = style_instance
         self.default_settings = {
-            "theme": "darkly",
             "close_to_tray": False,
             "start_with_system": False,
             "youtube_api_key": "",
             "quota_date": "",
             "quota_used": 0,
-            "ig_username": "",  # NEW
-            "ig_password": ""   # NEW
+            "ig_username": "",
+            "ig_password": ""
         }
         self.settings = self.load_settings()
 
@@ -41,13 +39,6 @@ class SettingsService:
         with open(self.settings_path, 'w') as f:
             json.dump(settings_data, f, indent=4)
         self.settings = settings_data
-
-    def get_theme(self):
-        return self.settings.get("theme", "darkly")
-
-    def set_theme(self, theme_name):
-        self.settings["theme"] = theme_name
-        self.save_settings(self.settings)
 
     def get_close_to_tray(self):
         return self.settings.get("close_to_tray", False)
