@@ -1,0 +1,24 @@
+{
+  "name": "data-hoarder-electron",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nerusnexus/Data-Hoarder-Electron.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/nerusnexus/Data-Hoarder-Electron/issues"
+  },
+  "homepage": "https://github.com/nerusnexus/Data-Hoarder-Electron#readme",
+  "devDependencies": {
+    "electron": "^40.7.0"
+  }
+}

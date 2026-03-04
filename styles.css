@@ -1,0 +1,170 @@
+:root {
+    /* */
+    --bg-dark: #121212;
+    --bg-darker: #0a0a0a;
+    --border-subtle: #2a2a2a;
+    --text-main: #eaeaea;
+    --text-muted: #a0a0a0;
+
+    /* */
+    --primary-purple: #9d4edd; 
+    --active-bg: #1e1e1e;
+    
+    /* Variables for layout */
+    --sidebar-open: 200px;
+    --sidebar-closed: 70px;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    /* Softening the default font */
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    height: 100vh;
+    overflow: hidden;
+}
+
+.app-container { display: flex; height: 100%; }
+
+/* --- Fluid, Collapsible Sidebar --- */
+.sidebar {
+    width: var(--sidebar-open);
+    background-color: var(--bg-darker);
+    border-right: 1px solid var(--border-subtle);
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    /* Clean, fluid easing function */
+    transition: width 0.3s cubic-bezier(0.2, 1, 0.2, 1);
+    overflow-x: hidden;
+    /* subtle shadow for depth against content */
+    box-shadow: 5px 0 15px rgba(0,0,0,0.2);
+}
+
+.sidebar.collapsed {
+    width: var(--sidebar-closed);
+}
+
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 25px;
+    height: 40px;
+}
+
+.icon-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    min-width: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.icon-btn:hover { color: var(--text-main); background-color: var(--active-bg); }
+
+.sidebar-title {
+    font-size: 16px;
+    white-space: nowrap;
+    opacity: 1;
+    transition: opacity 0.2s;
+    margin-left: 5px;
+}
+
+.sidebar.collapsed .text-content {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* --- Navigation & Animated Glow Box --- */
+.nav-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 8px; /* softer gap */
+}
+
+/* */
+.active-indicator {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 46px; /* slightly taller */
+    /* Semi-transparent purple */
+    background: rgba(157, 78, 237, 0.15); 
+    border: 1px solid rgba(157, 78, 237, 0.3);
+    /* The modern glassmorphism blur effect */
+    backdrop-filter: blur(5px);
+    border-radius: 12px; /* softer, rounded corners */
+    
+    /* */
+    box-shadow: 0 0 15px rgba(157, 78, 237, 0.5), 
+                0 0 5px rgba(157, 78, 237, 0.3);
+    
+    /* Smooth, fluid movement easing */
+    transition: transform 0.3s cubic-bezier(0.2, 1, 0.2, 1);
+    z-index: 0;
+}
+
+.nav-btn {
+    position: relative;
+    z-index: 1; /* text and icon remain above the glow box */
+    height: 46px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    border-radius: 12px;
+    transition: all 0.2s;
+}
+
+/* Subtlest hover indication when not selected */
+.nav-btn:not(.active):hover { color: var(--text-main); }
+
+/* Focus text legibility over the new glow box */
+.nav-btn.active { 
+    color: var(--text-main); 
+    font-weight: 600; 
+}
+
+/* Icon sizing and subtle active glow */
+.lucide-icon {
+    min-width: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* Add subtle shadow to icon when active to pop against glow box */
+    transition: filter 0.2s ease;
+}
+.nav-btn.active .lucide-icon { filter: drop-shadow(0 0 4px var(--primary-purple)); color: var(--primary-purple); }
+
+.text-content {
+    white-space: nowrap;
+    transition: opacity 0.2s;
+}
+
+/* --- Main Content --- */
+.content { flex-grow: 1; padding: 25px; display: flex; flex-direction: column; }
+.view { display: none; height: 100%; }
+.view.active { display: flex; flex-direction: column; }
+
+/* Tabs - Updated to subtle purple lines */
+.tabs { display: flex; border-bottom: 1px solid var(--border-subtle); margin-bottom: 25px; gap: 10px; }
+.tab-btn { background: transparent; color: var(--text-muted); border: none; padding: 12px 15px; cursor: pointer; border-radius: 8px 8px 0 0; transition: all 0.2s; }
+.tab-btn:hover { color: var(--text-main); background-color: var(--active-bg); }
+.tab-btn.active { color: var(--text-main); border-bottom: 2px solid var(--primary-purple); }
+.tab-content { flex-grow: 1; padding-top: 10px; }
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
