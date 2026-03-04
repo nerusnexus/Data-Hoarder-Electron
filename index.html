@@ -60,25 +60,139 @@
                     <button class="tab-btn active" data-target="yt-library">Library</button>
                     <button class="tab-btn" data-target="yt-fetch">Fetch Metadata</button>
                     <button class="tab-btn" data-target="yt-download">Download Videos</button>
+                    <button class="tab-btn" data-target="yt-subs">Manage Subscriptions</button>
+                    <button class="tab-btn" data-target="yt-account">My Account</button>
                 </div>
-                <div class="tab-content">
-                    <div id="yt-library" class="tab-pane active"><h3>Library Settings</h3></div>
-                    <div id="yt-fetch" class="tab-pane"><h3>Fetch Metadata</h3></div>
+                
+                <div class="tab-content" style="display: flex; flex-direction: column; flex-grow: 1;">
+                    
+                    <div id="yt-library" class="tab-pane active" style="height: 100%; display: flex; gap: 20px;">
+                        <div class="panel" style="flex: 1; display: flex; flex-direction: column; min-width: 250px;">
+                            <div class="panel-header">
+                                <h3>Library Tree</h3>
+                                <div class="action-buttons">
+                                    <button class="btn-icon" title="Add Group"><i data-lucide="folder-plus" class="lucide-sm"></i></button>
+                                    <button class="btn-icon" title="Add Channel"><i data-lucide="user-plus" class="lucide-sm"></i></button>
+                                </div>
+                            </div>
+                            <div class="treeview-container">
+                                <ul class="tree-list" id="library-tree-root">
+                                    <li class="text-muted" style="text-align: center; margin-top: 20px;">Loading database...</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="panel" style="flex: 2; display: flex; flex-direction: column;">
+                            <div class="panel-header">
+                                <h3>Videos</h3>
+                                <div class="search-bar" style="display: flex; gap: 10px;">
+                                    <input type="text" placeholder="Search videos..." style="background: var(--bg-dark); border: 1px solid var(--border-subtle); color: var(--text-main); padding: 5px 10px; border-radius: 6px;">
+                                    <button class="btn-outline"><i data-lucide="search" class="lucide-sm"></i></button>
+                                </div>
+                            </div>
+                            <div class="table-container" style="flex-grow: 1; overflow-y: auto;">
+                                <div style="text-align: center; color: var(--text-muted); padding: 40px;">Select a channel to view videos.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="yt-fetch" class="tab-pane">
+                        <div class="panel" style="display: flex; flex-direction: column; height: 100%;">
+                            <h3>Fetch Metadata Console</h3>
+                            <div class="input-group mt-4">
+                                <input type="text" id="fetch-url-input" placeholder="YouTube URL (Video, Playlist, or Channel)...">
+                                <label style="display: flex; align-items: center; gap: 5px; color: var(--text-muted); margin: 0 10px;">
+                                    <input type="checkbox" id="fetch-save-db" checked> Save to Database
+                                </label>
+                                <button class="btn-primary" id="fetch-btn"><i data-lucide="download-cloud" class="lucide-sm"></i> Fetch Data</button>
+                            </div>
+                            <div class="console-output mt-4" id="fetch-console" style="flex-grow: 1;">
+                                > Ready to fetch metadata. Waiting for URL...
+                            </div>
+                        </div>
+                    </div>
+
                     <div id="yt-download" class="tab-pane">
-                     <h3>Download Engine</h3>
-                     <br>
-                        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                             <input type="text" id="video-url-input" placeholder="Enter video URL..." 
-                                  style="flex-grow: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border-subtle); background: var(--bg-darker); color: var(--text-main);">
-                            <button id="download-btn" 
-                                style="padding: 10px 20px; border-radius: 8px; border: none; background: var(--primary-purple); color: white; cursor: pointer; font-weight: bold;">
-                            Download
-                        </button>
+                        <div class="panel" style="display: flex; flex-direction: column; height: 100%;">
+                            <h3>Download Engine</h3>
+                            
+                            <div style="display: flex; gap: 15px; margin-top: 15px;">
+                                <input type="text" id="download-url-input" placeholder="Enter video URL..." style="flex: 2; background: var(--bg-dark); border: 1px solid var(--border-subtle); color: var(--text-main); padding: 10px; border-radius: 8px;">
+                                
+                                <select id="download-group-select" style="flex: 1; background: var(--bg-dark); border: 1px solid var(--border-subtle); color: var(--text-main); padding: 10px; border-radius: 8px;">
+                                    <option value="">Select Group...</option>
+                                </select>
+                                
+                                <select id="download-format-select" style="flex: 1; background: var(--bg-dark); border: 1px solid var(--border-subtle); color: var(--text-main); padding: 10px; border-radius: 8px;">
+                                    <option value="best">Best Video+Audio</option>
+                                    <option value="audio_only">Audio Only</option>
+                                </select>
+
+                                <button id="download-btn" class="btn-primary"><i data-lucide="download" class="lucide-sm"></i> Download</button>
+                            </div>
+                            
+                            <div class="progress-bar-bg mt-4">
+                                <div id="download-progress" class="progress-bar-fill" style="width: 0%;"></div>
+                            </div>
+                            <div id="download-console" class="console-output mt-4" style="flex-grow: 1;">
+                                > Download engine ready.
+                            </div>
                         </div>
-                        <div id="output-console" style="padding: 15px; background: var(--bg-darker); border-radius: 8px; border: 1px solid var(--border-subtle); min-height: 100px; color: var(--text-muted); font-family: monospace;">
-                            Waiting for input...
+                    </div>
+
+                    <div id="yt-subs" class="tab-pane" style="height: 100%;">
+                        <div class="panel" style="height: 100%; display: flex; flex-direction: column;">
+                            <div class="panel-header">
+                                <h3>Subscriptions</h3>
+                                <div style="display: flex; gap: 10px;">
+                                    <button class="btn-outline"><i data-lucide="refresh-cw" class="lucide-sm"></i> Sync Selected</button>
+                                    <button class="btn-primary"><i data-lucide="refresh-ccw" class="lucide-sm"></i> Sync All</button>
+                                </div>
+                            </div>
+                            <div class="table-container">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 40px;"><input type="checkbox"></th>
+                                            <th>Channel Name</th>
+                                            <th>Group</th>
+                                            <th>Videos Logged</th>
+                                            <th>Last Synced</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="subs-table-body">
+                                        <tr><td colspan="5" style="text-align: center;">No subscriptions found in database.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-</div>
+                    </div>
+
+                    <div id="yt-account" class="tab-pane">
+                        <div class="panel" style="max-width: 600px;">
+                            <h3>API Configuration</h3>
+                            <div class="form-group mt-4">
+                                <label style="color: var(--text-muted); font-size: 14px; margin-bottom: 5px; display: block;">YouTube API Key</label>
+                                <div class="input-group">
+                                    <input type="password" id="api-key-input" placeholder="Enter API Key...">
+                                    <button class="btn-outline" id="toggle-api-key"><i data-lucide="eye" class="lucide-sm"></i></button>
+                                    <button class="btn-primary" id="save-api-key">Save</button>
+                                </div>
+                            </div>
+                            
+                            <div class="quota-card mt-4" style="background: var(--bg-dark); padding: 15px; border-radius: 8px; border: 1px solid var(--border-subtle);">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                                    <h4 style="margin:0;">Daily Quota Usage</h4>
+                                    <span style="color: var(--text-muted); font-size: 14px;">Calculated</span>
+                                </div>
+                                <div class="progress-bar-bg">
+                                    <div class="progress-bar-fill" style="width: 0%; background-color: var(--primary-purple);"></div>
+                                </div>
+                                <p class="text-muted mt-2" id="quota-text">Fetching quota...</p>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </section>
 

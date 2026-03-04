@@ -1,7 +1,7 @@
-//
+// Initialize icons on first load
 lucide.createIcons();
 
-// Sidebar Toggle Logic
+// --- Sidebar Toggle Logic ---
 const sidebar = document.getElementById('sidebar');
 const toggleBtn = document.getElementById('toggle-sidebar');
 
@@ -9,17 +9,17 @@ toggleBtn.addEventListener('click', () => {
     sidebar.classList.toggle('collapsed');
 });
 
-// Sidebar Navigation & Sliding Indicator Logic
+// --- Sidebar Navigation & Sliding Indicator Logic ---
 const navButtons = document.querySelectorAll('.nav-btn');
 const views = document.querySelectorAll('.view');
 const activeIndicator = document.getElementById('active-indicator');
 
 function updateIndicator(button) {
-    // Moves the green box down on the Y axis
+    // Moves the purple glow box down on the Y axis
     activeIndicator.style.transform = `translateY(${button.offsetTop}px)`;
 }
 
-// Initial position
+// Initial position for the glow box
 const initialActive = document.querySelector('.nav-btn.active');
 if (initialActive) updateIndicator(initialActive);
 
@@ -37,18 +37,22 @@ navButtons.forEach(btn => {
     });
 });
 
-// Inner Tabs Logic (Notebooks)
+// --- Inner Tabs Logic (Notebooks) ---
 const tabButtons = document.querySelectorAll('.tab-btn');
 
 tabButtons.forEach(btn => {
     btn.addEventListener('click', () => {
         const parentView = btn.closest('.view');
+        
         parentView.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         parentView.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
 
         btn.classList.add('active');
         const targetId = btn.getAttribute('data-target');
         document.getElementById(targetId).classList.add('active');
+        
+        // Ensure icons load when tabs switch
+        lucide.createIcons(); 
     });
 });
 
