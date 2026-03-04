@@ -1,61 +1,56 @@
-const { app, BrowserWindow, ipcMain } = require('electron')
-const path = require('path')
-const { spawn } = require('child_process')
+const { app, BrowserWindow, ipcMain } = require('electron');
+const path = require('path');
+const { spawn } = require('child_process');
 
 function createWindow () {
   const win = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: 1300,
+    height: 900,
     backgroundColor: '#121212',
     webPreferences: {
-      // Connect the secure bridge
       preload: path.join(__dirname, 'preload.js'),
-      // Security best practices:
       contextIsolation: true,
       nodeIntegration: false 
     }
-  })
+  });
 
-  win.maximize()
-  win.setMenuBarVisibility(false)
-  win.loadFile('index.html')
+  win.maximize();
+  win.setMenuBarVisibility(false);
+  win.loadFile('index.html');
 }
 
-// --- THIS IS WHERE NODE LISTENS FOR FRONTEND COMMANDS ---
-ipcMain.handle('ytdlp:download', async (event, url) => {
+// Universal Python Executor
+ipcMain.handle('python:execute', async (event, command, args) => {
     return new Promise((resolve, reject) => {
-        // This invisibly runs: python bridge.py ytdlp_download "https://..."
-        const pythonProcess = spawn('python', ['bridge.py', 'ytdlp_download', url]);
+        // Run: python bridge.py <command> <arg1> <arg2>
+        const pythonProcess = spawn('python', ['bridge.py', command, ...args]);
         
         let pythonOutput = '';
 
-        // Capture whatever Python prints to the console
         pythonProcess.stdout.on('data', (data) => {
             pythonOutput += data.toString();
         });
 
-        // Capture any Python errors
         pythonProcess.stderr.on('data', (data) => {
-            console.error(`Python Error: ${data}`);
+            console.error(`Python Stderr: ${data}`);
         });
 
-        // When Python finishes running, send the result back to the UI
         pythonProcess.on('close', (code) => {
             try {
-                // We expect Python to print valid JSON
+                // Return parsed JSON data directly to JS
                 const result = JSON.parse(pythonOutput);
                 resolve(result);
             } catch (e) {
-                resolve({ status: 'error', message: 'Failed to parse Python output', raw: pythonOutput });
+                resolve({ status: 'error', message: 'Parse error', raw: pythonOutput });
             }
         });
     });
 });
 
 app.whenReady().then(() => {
-  createWindow()
-})
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
-})
+  if (process.platform !== 'darwin') app.quit();
+});

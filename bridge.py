@@ -2,26 +2,21 @@ import sys
 import json
 import traceback
 
-# Import your actual backend logic
 from services.services import AppServices
 from services.db.db_manager import get_all_groups, get_channels_by_group
 
 def handle_get_library_data():
-    """Fetches all groups and their channels from the SQLite database."""
     try:
-        # Initialize services to ensure DB is initialized properly
+        # This triggers database_initializer.py via AppServices 
+        # config.py will automatically create the Data folder now.
         services = AppServices() 
         
-        # 1. Get groups from DB
         groups = get_all_groups()
         library_tree = []
         
-        # 2. Structure the data for JavaScript
         for group in groups:
             group_id = group[0]
             group_name = group[1]
-            
-            # Fetch channels for this specific group
             channels = get_channels_by_group(group_id)
             channel_list = [{"id": c[0], "name": c[1], "url": c[2]} for c in channels]
             
@@ -31,42 +26,29 @@ def handle_get_library_data():
                 "channels": channel_list
             })
 
-        # 3. Send back to Electron
-        result = {
-            "status": "success",
-            "data": library_tree
-        }
+        result = {"status": "success", "data": library_tree}
     except Exception as e:
-        result = {
-            "status": "error",
-            "message": str(e),
-            "traceback": traceback.format_exc()
-        }
+        result = {"status": "error", "message": str(e), "traceback": traceback.format_exc()}
     
     print(json.dumps(result))
 
-def handle_ytdlp_download(url):
-    """Triggers the yt-dlp download service."""
+def handle_add_group(group_name):
     try:
-        # Initialize services
-        services = AppServices() 
-        
-        # Call your actual download function
-        services.dlp_download_service.download(url)
-
-        # If it succeeds, tell Electron
-        result = {
-            "status": "success",
-            "message": f"Successfully triggered download for: {url}",
-        }
+        services = AppServices()
+        services.add_group_service.add_group(group_name)
+        result = {"status": "success"}
     except Exception as e:
-        # Catch any Python errors and send them cleanly to the UI
-        result = {
-            "status": "error",
-            "message": str(e),
-            "traceback": traceback.format_exc()
-        }
-    
+        result = {"status": "error", "message": str(e)}
+    print(json.dumps(result))
+
+def handle_add_channel(group_name, channel_input):
+    try:
+        services = AppServices()
+        # This mirrors your old AddChannelDialog logic
+        services.add_channel_service.add_channel(group_name, channel_input)
+        result = {"status": "success"}
+    except Exception as e:
+        result = {"status": "error", "message": str(e)}
     print(json.dumps(result))
 
 def main():
@@ -75,14 +57,19 @@ def main():
         sys.exit(1)
 
     command = sys.argv[1]
+    args = sys.argv[2:]
 
-    if command == "ytdlp_download":
-        url = sys.argv[2] if len(sys.argv) > 2 else ""
-        handle_ytdlp_download(url)
-    elif command == "get_library_data":
+    if command == "get_library_data":
         handle_get_library_data()
+    elif command == "add_group":
+        handle_add_group(args[0])
+    elif command == "add_channel":
+        handle_add_channel(args[0], args[1])
+    # You can easily add more commands here in the future:
+    # elif command == "start_download":
+    #     handle_download(args[0])
     else:
-        print(json.dumps({"status": "error", "message": "Unknown command"}))
+        print(json.dumps({"status": "error", "message": f"Unknown command: {command}"}))
 
 if __name__ == "__main__":
     main()

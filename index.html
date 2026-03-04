@@ -11,48 +11,33 @@
     <div class="app-container">
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <button id="toggle-sidebar" class="icon-btn">
-                    <i data-lucide="menu"></i>
-                </button>
+                <button id="toggle-sidebar" class="icon-btn"><i data-lucide="menu"></i></button>
                 <h2 class="sidebar-title text-content">Hoarder</h2>
             </div>
             
             <div class="nav-container">
                 <div class="active-indicator" id="active-indicator"></div>
-
                 <button class="nav-btn active" data-target="view-dashboard">
-                    <i data-lucide="layout-dashboard" class="lucide-icon"></i>
-                    <span class="text-content">Dashboard</span>
+                    <i data-lucide="layout-dashboard" class="lucide-icon"></i><span class="text-content">Dashboard</span>
                 </button>
                 <button class="nav-btn" data-target="view-ytdlp">
-                    <i data-lucide="video" class="lucide-icon"></i>
-                    <span class="text-content">yt-dlp</span>
+                    <i data-lucide="video" class="lucide-icon"></i><span class="text-content">yt-dlp</span>
                 </button>
                 <button class="nav-btn" data-target="view-insta">
-                    <i data-lucide="instagram" class="lucide-icon"></i>
-                    <span class="text-content">Insta</span>
+                    <i data-lucide="instagram" class="lucide-icon"></i><span class="text-content">Insta</span>
                 </button>
                 <button class="nav-btn" data-target="view-db">
-                    <i data-lucide="database" class="lucide-icon"></i>
-                    <span class="text-content">Database</span>
+                    <i data-lucide="database" class="lucide-icon"></i><span class="text-content">Database</span>
                 </button>
                 <button class="nav-btn" data-target="view-settings">
-                    <i data-lucide="settings" class="lucide-icon"></i>
-                    <span class="text-content">Settings</span>
+                    <i data-lucide="settings" class="lucide-icon"></i><span class="text-content">Settings</span>
                 </button>
             </div>
         </aside>
 
         <main class="content">
             <section id="view-dashboard" class="view active">
-                <div class="tabs">
-                    <button class="tab-btn active" data-target="dash-overview">Overview</button>
-                    <button class="tab-btn" data-target="dash-details">Details</button>
-                </div>
-                <div class="tab-content">
-                    <div id="dash-overview" class="tab-pane active"><h3>Library Overview</h3></div>
-                    <div id="dash-details" class="tab-pane"><h3>Library Details</h3></div>
-                </div>
+                <div class="panel"><h2>Dashboard</h2></div>
             </section>
 
             <section id="view-ytdlp" class="view">
@@ -64,144 +49,194 @@
                     <button class="tab-btn" data-target="yt-account">My Account</button>
                 </div>
                 
-                <div class="tab-content" style="display: flex; flex-direction: column; flex-grow: 1;">
+                <div class="tab-content layout-flex">
                     
-                    <div id="yt-library" class="tab-pane active" style="height: 100%; display: flex; gap: 20px;">
-                        <div class="panel" style="flex: 1; display: flex; flex-direction: column; min-width: 250px;">
-                            <div class="panel-header">
-                                <h3>Library Tree</h3>
-                                <div class="action-buttons">
-                                    <button class="btn-icon" title="Add Group"><i data-lucide="folder-plus" class="lucide-sm"></i></button>
-                                    <button class="btn-icon" title="Add Channel"><i data-lucide="user-plus" class="lucide-sm"></i></button>
-                                </div>
-                            </div>
-                            <div class="treeview-container">
-                                <ul class="tree-list" id="library-tree-root">
-                                    <li class="text-muted" style="text-align: center; margin-top: 20px;">Loading database...</li>
-                                </ul>
-                            </div>
+                    <div id="yt-library" class="tab-pane active layout-flex-row">
+                        <div class="panel" style="flex: 1; min-width: 250px; display: flex; flex-direction: column;">
+                            <h3>Channels</h3>
+                            <div class="treeview-container mb-3" id="library-channels-tree">Loading...</div>
+                            
+                            <fieldset class="params-box">
+                                <legend>Filters & Sorting</legend>
+                                <label>Search:</label>
+                                <input type="text" class="input-base mb-2" placeholder="Search videos...">
+                                
+                                <label>Sort by:</label>
+                                <select class="input-base mb-2">
+                                    <option>Date</option><option>Views</option><option>Title</option>
+                                </select>
+                                
+                                <select class="input-base mb-3">
+                                    <option>Descending</option><option>Ascending</option>
+                                </select>
+                                
+                                <button class="btn-primary w-100" style="justify-content: center;">Check online status</button>
+                            </fieldset>
                         </div>
                         
-                        <div class="panel" style="flex: 2; display: flex; flex-direction: column;">
-                            <div class="panel-header">
-                                <h3>Videos</h3>
-                                <div class="search-bar" style="display: flex; gap: 10px;">
-                                    <input type="text" placeholder="Search videos..." style="background: var(--bg-dark); border: 1px solid var(--border-subtle); color: var(--text-main); padding: 5px 10px; border-radius: 6px;">
-                                    <button class="btn-outline"><i data-lucide="search" class="lucide-sm"></i></button>
-                                </div>
+                        <div class="panel" style="flex: 3; display: flex; flex-direction: column;">
+                            <div class="inner-tabs">
+                                <button class="inner-tab-btn active">Videos</button>
+                                <button class="inner-tab-btn">Shorts</button>
+                                <button class="inner-tab-btn">Lives</button>
                             </div>
-                            <div class="table-container" style="flex-grow: 1; overflow-y: auto;">
-                                <div style="text-align: center; color: var(--text-muted); padding: 40px;">Select a channel to view videos.</div>
+                            <div class="table-container p-3" style="flex-grow: 1;">
+                                <p class="text-muted text-center mt-4">Select a channel to view items.</p>
                             </div>
                         </div>
                     </div>
 
-                    <div id="yt-fetch" class="tab-pane">
-                        <div class="panel" style="display: flex; flex-direction: column; height: 100%;">
-                            <h3>Fetch Metadata Console</h3>
-                            <div class="input-group mt-4">
-                                <input type="text" id="fetch-url-input" placeholder="YouTube URL (Video, Playlist, or Channel)...">
-                                <label style="display: flex; align-items: center; gap: 5px; color: var(--text-muted); margin: 0 10px;">
-                                    <input type="checkbox" id="fetch-save-db" checked> Save to Database
-                                </label>
-                                <button class="btn-primary" id="fetch-btn"><i data-lucide="download-cloud" class="lucide-sm"></i> Fetch Data</button>
-                            </div>
-                            <div class="console-output mt-4" id="fetch-console" style="flex-grow: 1;">
-                                > Ready to fetch metadata. Waiting for URL...
-                            </div>
+                    <div id="yt-fetch" class="tab-pane layout-flex-row">
+                        <div class="panel" style="flex: 1;">
+                            <h3>Available Channels</h3>
+                            <div class="treeview-container" id="fetch-channels-tree">Loading...</div>
                         </div>
-                    </div>
-
-                    <div id="yt-download" class="tab-pane">
-                        <div class="panel" style="display: flex; flex-direction: column; height: 100%;">
-                            <h3>Download Engine</h3>
-                            
-                            <div style="display: flex; gap: 15px; margin-top: 15px;">
-                                <input type="text" id="download-url-input" placeholder="Enter video URL..." style="flex: 2; background: var(--bg-dark); border: 1px solid var(--border-subtle); color: var(--text-main); padding: 10px; border-radius: 8px;">
-                                
-                                <select id="download-group-select" style="flex: 1; background: var(--bg-dark); border: 1px solid var(--border-subtle); color: var(--text-main); padding: 10px; border-radius: 8px;">
-                                    <option value="">Select Group...</option>
-                                </select>
-                                
-                                <select id="download-format-select" style="flex: 1; background: var(--bg-dark); border: 1px solid var(--border-subtle); color: var(--text-main); padding: 10px; border-radius: 8px;">
-                                    <option value="best">Best Video+Audio</option>
-                                    <option value="audio_only">Audio Only</option>
-                                </select>
-
-                                <button id="download-btn" class="btn-primary"><i data-lucide="download" class="lucide-sm"></i> Download</button>
+                        <div class="panel" style="flex: 1;">
+                            <h3>Queue to Fetch</h3>
+                            <div class="table-container p-3" id="fetch-queue">Queue is empty.</div>
+                        </div>
+                        <div class="panel" style="flex: 1.5; overflow-y: auto;">
+                            <h3>yt-dlp Parameters</h3>
+                            <div style="display: flex; align-items: center; gap: 10px; margin: 15px 0;">
+                                <strong>Speed Preset:</strong>
+                                <select class="input-base"><option>Slow</option><option selected>Default</option><option>Fast</option></select>
                             </div>
                             
-                            <div class="progress-bar-bg mt-4">
-                                <div id="download-progress" class="progress-bar-fill" style="width: 0%;"></div>
+                            <div class="layout-flex-row">
+                                <div style="flex: 1;">
+                                    <strong>Locked:</strong>
+                                    <label class="check-row"><input type="checkbox" checked disabled> --skip-download</label>
+                                    <label class="check-row"><input type="checkbox" checked disabled> --write-info-json</label>
+                                    <label class="check-row"><input type="checkbox" checked disabled> --write-playlist-metafiles</label>
+                                    
+                                    <strong class="mt-3" style="display:block;">Options:</strong>
+                                    <label class="check-row"><input type="checkbox" checked> --write-description</label>
+                                    <label class="check-row"><input type="checkbox" checked> --write-thumbnail</label>
+                                    <label class="check-row"><input type="checkbox"> --get-comments</label>
+                                    <label class="check-row mt-2"><input type="checkbox" checked> Use Firefox Cookies</label>
+
+                                    <strong class="mt-3" style="display:block;">Re-Fetch Policy:</strong>
+                                    <select class="input-base mt-1 w-100">
+                                        <option>Skip already downloaded</option><option>Download 1 week old</option>
+                                        <option>Always Download</option>
+                                    </select>
+                                </div>
+                                <div style="flex: 1;">
+                                    <div class="flex-between mb-1"><span>Workers (Threads)</span><select class="input-base"><option>1</option><option>2</option></select></div>
+                                    <div class="flex-between mb-1"><span>-N (Concurrent Frags)</span><select class="input-base"><option>4</option></select></div>
+                                    <div class="flex-between mb-1"><span>-r (Rate Limit)</span><select class="input-base"><option>8M</option></select></div>
+                                    <div class="flex-between mb-1"><span>--sleep-requests</span><select class="input-base"><option>1</option></select></div>
+                                    <div class="flex-between mb-1"><span>--sleep-interval</span><select class="input-base"><option>10</option></select></div>
+                                    <div class="flex-between mb-1"><span>--max-sleep-interval</span><select class="input-base"><option>30</option></select></div>
+                                    <div class="flex-between mb-1"><span>--sleep-subtitles</span><select class="input-base"><option>5</option></select></div>
+                                    <div class="flex-between mb-1"><span>--retries</span><select class="input-base"><option>10</option></select></div>
+                                </div>
                             </div>
-                            <div id="download-console" class="console-output mt-4" style="flex-grow: 1;">
-                                > Download engine ready.
-                            </div>
+                            <button class="btn-outline w-100 mt-4" style="border-color: var(--success); color: var(--success); justify-content:center;">START FETCHING</button>
                         </div>
                     </div>
 
-                    <div id="yt-subs" class="tab-pane" style="height: 100%;">
-                        <div class="panel" style="height: 100%; display: flex; flex-direction: column;">
-                            <div class="panel-header">
-                                <h3>Subscriptions</h3>
-                                <div style="display: flex; gap: 10px;">
-                                    <button class="btn-outline"><i data-lucide="refresh-cw" class="lucide-sm"></i> Sync Selected</button>
-                                    <button class="btn-primary"><i data-lucide="refresh-ccw" class="lucide-sm"></i> Sync All</button>
-                                </div>
-                            </div>
-                            <div class="table-container">
-                                <table class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th style="width: 40px;"><input type="checkbox"></th>
-                                            <th>Channel Name</th>
-                                            <th>Group</th>
-                                            <th>Videos Logged</th>
-                                            <th>Last Synced</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="subs-table-body">
-                                        <tr><td colspan="5" style="text-align: center;">No subscriptions found in database.</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                    <div id="yt-download" class="tab-pane layout-flex-row">
+                        <div class="panel" style="flex: 1;">
+                            <h3>Available Channels</h3>
+                            <div class="treeview-container" id="dl-channels-tree">Loading...</div>
                         </div>
-                    </div>
-
-                    <div id="yt-account" class="tab-pane">
-                        <div class="panel" style="max-width: 600px;">
-                            <h3>API Configuration</h3>
-                            <div class="form-group mt-4">
-                                <label style="color: var(--text-muted); font-size: 14px; margin-bottom: 5px; display: block;">YouTube API Key</label>
-                                <div class="input-group">
-                                    <input type="password" id="api-key-input" placeholder="Enter API Key...">
-                                    <button class="btn-outline" id="toggle-api-key"><i data-lucide="eye" class="lucide-sm"></i></button>
-                                    <button class="btn-primary" id="save-api-key">Save</button>
-                                </div>
+                        <div class="panel" style="flex: 1;">
+                            <h3>Queue to Download</h3>
+                            <div class="table-container p-3" id="dl-queue">Queue is empty.</div>
+                        </div>
+                        <div class="panel" style="flex: 1.5; overflow-y: auto;">
+                            <h3>Download Parameters</h3>
+                            <div style="display: flex; align-items: center; gap: 10px; margin: 15px 0;">
+                                <strong>Speed Preset:</strong>
+                                <select class="input-base"><option>Slow</option><option selected>Default</option><option>Fast</option></select>
                             </div>
                             
-                            <div class="quota-card mt-4" style="background: var(--bg-dark); padding: 15px; border-radius: 8px; border: 1px solid var(--border-subtle);">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                    <h4 style="margin:0;">Daily Quota Usage</h4>
-                                    <span style="color: var(--text-muted); font-size: 14px;">Calculated</span>
+                            <div class="layout-flex-row">
+                                <div style="flex: 1;">
+                                    <strong>Format Selection:</strong>
+                                    <select class="input-base w-100 mb-2 mt-1"><option>bestvideo+bestaudio/best</option><option>best</option></select>
+                                    
+                                    <strong>Merge Container:</strong>
+                                    <select class="input-base w-100 mb-2 mt-1"><option>mkv</option><option>mp4</option></select>
+                                    
+                                    <strong>Max Resolution:</strong>
+                                    <select class="input-base w-100 mb-2 mt-1"><option>2160p</option><option>1080p</option></select>
+
+                                    <strong>Options:</strong>
+                                    <label class="check-row mt-1"><input type="checkbox" checked> Use Firefox Cookies</label>
+                                    <label class="check-row"><input type="checkbox" checked> --embed-metadata</label>
+                                    <label class="check-row"><input type="checkbox" checked> --embed-thumbnail</label>
+                                    <label class="check-row"><input type="checkbox" checked> --embed-chapters</label>
+                                    <label class="check-row"><input type="checkbox" checked> --embed-info-json</label>
+
+                                    <strong class="mt-3" style="display:block;">Re-Fetch Policy:</strong>
+                                    <select class="input-base mt-1 w-100"><option>Skip already downloaded</option></select>
                                 </div>
-                                <div class="progress-bar-bg">
-                                    <div class="progress-bar-fill" style="width: 0%; background-color: var(--primary-purple);"></div>
+                                <div style="flex: 1;">
+                                    <div class="flex-between mb-1"><span>Workers (Threads)</span><select class="input-base"><option>1</option></select></div>
+                                    <div class="flex-between mb-1"><span>-N (Concurrent Frags)</span><select class="input-base"><option>4</option></select></div>
+                                    <div class="flex-between mb-1"><span>-r (Rate Limit)</span><select class="input-base"><option>8M</option></select></div>
+                                    <div class="flex-between mb-1"><span>--sleep-requests</span><select class="input-base"><option>1</option></select></div>
+                                    <div class="flex-between mb-1"><span>--sleep-interval</span><select class="input-base"><option>5</option></select></div>
+                                    <div class="flex-between mb-1"><span>--max-sleep-interval</span><select class="input-base"><option>15</option></select></div>
+                                    <div class="flex-between mb-1"><span>--retries</span><select class="input-base"><option>10</option></select></div>
                                 </div>
-                                <p class="text-muted mt-2" id="quota-text">Fetching quota...</p>
                             </div>
+                            <button class="btn-primary w-100 mt-4" style="background-color: var(--info); justify-content:center; color: #fff;">START DOWNLOAD</button>
+                        </div>
+                    </div>
+
+                    <div id="yt-subs" class="tab-pane layout-flex-row">
+                        <div class="panel" style="flex: 1; display:flex; flex-direction:column;">
+                            <div class="treeview-container mb-3" id="manage-tree" style="flex-grow:1;">Loading...</div>
+                            
+                            <button id="btn-add-group" class="btn-outline w-100 mb-2" style="justify-content:center;">+ Group</button>
+                            <button id="btn-add-channel" class="btn-outline w-100 mb-2" style="justify-content:center;">+ Channel</button>
+                            <button id="btn-delete-item" class="btn-outline w-100" style="justify-content:center; border-color:var(--danger); color:var(--danger);">Delete</button>
+                            
+                        </div>
+                        <div class="panel" style="flex: 3; background: var(--bg-dark);">
+                            <p class="text-muted text-center mt-4">Select a group or channel to manage.</p>
+                        </div>
+                    </div>
+
+                    <div id="yt-account" class="tab-pane layout-flex-row">
+                        <div class="panel" style="flex: 1; height: fit-content;">
+                            <fieldset class="params-box mb-3">
+                                <legend>Account Info</legend>
+                                <div class="flex-between mb-2">
+                                    <label>Channel Handle:</label>
+                                    <input type="text" class="input-base w-60">
+                                </div>
+                                <div class="flex-between mb-3">
+                                    <label>Channel URL:</label>
+                                    <input type="text" class="input-base w-60">
+                                </div>
+                                <button class="btn-outline w-100 mb-2" style="justify-content:center;">Save</button>
+                                <button class="btn-outline w-100" style="justify-content:center;">Fetch Channel Info</button>
+                            </fieldset>
+                            
+                            <fieldset class="params-box">
+                                <legend>Channel Stats</legend>
+                                <p class="mb-1">Subscribers: <span class="text-muted">Unknown</span></p>
+                                <p>Videos: <span class="text-muted">Unknown</span></p>
+                            </fieldset>
+                        </div>
+                        <div class="panel" style="flex: 2; display:flex; flex-direction:column;">
+                            <h3>Subscriptions</h3>
+                            <div class="treeview-container" style="flex-grow:1; border: 1px solid var(--border-subtle);"></div>
                         </div>
                     </div>
 
                 </div>
             </section>
-
+            
             <section id="view-insta" class="view"><h2>Instaloader Environment</h2></section>
             <section id="view-db" class="view"><h2>Database Management</h2></section>
             <section id="view-settings" class="view"><h2>Application Settings</h2></section>
         </main>
     </div>
-
     <script src="renderer.js"></script>
 </body>
 </html>
